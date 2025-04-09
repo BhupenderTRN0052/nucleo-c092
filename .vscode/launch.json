@@ -1,0 +1,24 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Debug STM32 (ST-LINK)",
+        "type": "cortex-debug",
+        "request": "launch",
+        "servertype": "stlink",
+        "cwd": "${workspaceFolder}",
+        "executable": "${workspaceFolder}/build/nucleo-c092.elf",
+        "device": "STM32C0x", 
+        "interface": "swd",
+        "runToMain": false,
+        "gdbPath": "C:/GNU_Arm_Embedded_Toolchain/10_2021_10/bin/arm-none-eabi-gdb.exe",
+        "gdbTarget": "localhost:61234",
+        "preLaunchTask": "Start GDB Server",
+        "svdFile": "./STM32C092.svd",
+        "preLaunchCommands": [
+        "monitor reset"  // <- valid for ST-LINK gdbserver
+      ],
+        "showDevDebugOutput": "raw"
+      }
+    ]
+}

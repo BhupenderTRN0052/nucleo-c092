@@ -1,0 +1,1 @@
+STM32_Programmer_CLI -c port=SWD -e all -d D:\nucleo-c092\build\nucleo-c092.elf 0x08000000 -rst

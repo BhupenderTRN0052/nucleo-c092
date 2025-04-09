@@ -1,0 +1,32 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Start GDB Server",
+        "type": "shell",
+        "command": "C:\\ST-Link-GDBServer\\bin\\ST-LINK_gdbserver.exe",
+        "args": [
+          "-d", "STM32C092",        
+          "-p", "61234",
+          "-cp", "C:\\Program Files\\STMicroelectronics\\STM32Cube\\STM32CubeProgrammer\\bin"
+        ],
+        "isBackground": true,
+        "problemMatcher": {
+          "pattern": [
+            {
+              "regexp": ".",
+              "file": 1,
+              "location": 2,
+              "message": 3
+            }
+          ],
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": "Waiting for debugger connection",
+            "endsPattern": "Connected to GDB server"
+          }
+        }
+      }
+    ]
+  }
+  
