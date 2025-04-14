@@ -18,10 +18,15 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "fdcan.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "fdcan.h"
+#include "gpio.h"
+#include "can_lib.h"
+#include "queue.h"
 
 /* USER CODE END Includes */
 
@@ -43,6 +48,10 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+Queue TxQueue;
+Queue RxQueue;
+uint8_t data[8] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
+
 
 /* USER CODE END PV */
 
@@ -86,7 +95,11 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_FDCAN1_Init();
   /* USER CODE BEGIN 2 */
+  FDCAN_Setup();
+  Queue_Init(&TxQueue);
+	Queue_Init(&RxQueue);
 
   /* USER CODE END 2 */
 
@@ -95,7 +108,9 @@ int main(void)
   while (1)
   {
     HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5); // Toggle the state of the pin
-    HAL_Delay(1000); // Delay for 500 milliseconds
+    Transmit_on_CAN(0x001, S, data, 8);
+    // Transmit_TxQueue();
+    HAL_Delay(500); // Delay for 500 milliseconds
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
