@@ -1,9 +1,7 @@
 #include "can_lib.h"
 
-
 extern Queue TxQueue;
 extern Queue RxQueue;
-
 
 /* This function is used to enable CAN hardware filter and to start the CAN module*/
 void FDCAN_Setup()
@@ -14,8 +12,8 @@ void FDCAN_Setup()
 		Error_Handler();
 	}
 
-	// 2. create filter list for IDs that you want to recieve in fifo+
-	// CAN_Filter_IDList(FDCANID_FRM_UP_RX_3FE, S, FBANK15, FIFO1_CAN2);
+	// 2. create filter list for IDs that you want to recieve in fifo
+	CAN_Filter_IDList(FDCANID_TEST_ID, S, FBANK0, FIFO0_CAN1);
 
 	// 3. start CAN
 	if (HAL_FDCAN_Start(&hfdcan1) != HAL_OK)
@@ -35,9 +33,34 @@ void FDCAN_Setup()
 	}
 }
 
+/* Transmit a CAN message. */
+void Transmit_on_CAN(uint32_t U32_transmitCANid, TypeofCANID U8_idType, uint8_t *U8_dataarr, uint8_t U8_DLC)
+{
+	CAN_Message msg;
+	if (U8_idType == E)
+	{
+		msg.TxHeader.IdType = FDCAN_EXTENDED_ID;
+	}
+	else if (U8_idType == S)
+	{
+		msg.TxHeader.IdType = FDCAN_STANDARD_ID;
+	}
+
+	msg.TxHeader.TxFrameType = FDCAN_DATA_FRAME;
+	msg.TxHeader.Identifier = U32_transmitCANid;
+	msg.TxHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
+	msg.TxHeader.BitRateSwitch = FDCAN_BRS_OFF;
+	msg.TxHeader.FDFormat = FDCAN_CLASSIC_CAN;
+	msg.TxHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
+	msg.TxHeader.MessageMarker = 0;
+	msg.TxHeader.DataLength = U8_DLC;
+
+	memcpy(msg.Data, U8_dataarr, U8_DLC);
+	enqueue(&TxQueue, &msg);
+}
 
 /* Configure Hardware CAN filter */
-void CAN_Filter_IDList(uint32_t U32_receiveCANid1, TypeofCANID U8_idType, FilterBanks_CAN2 U8_filterbank, FIFOs_CAN2 U8_fifo)
+void CAN_Filter_IDList(uint32_t U32_receiveCANid1, TypeofCANID U8_idType, FilterBanks_CAN1 U8_filterbank, FIFOs_CAN1 U8_fifo)
 {
 	FDCAN_FilterTypeDef sFilterConfig;
 	sFilterConfig.FilterType  = FDCAN_FILTER_MASK;
@@ -55,11 +78,11 @@ void CAN_Filter_IDList(uint32_t U32_receiveCANid1, TypeofCANID U8_idType, Filter
 		sFilterConfig.FilterID1 = U32_receiveCANid1;
 		sFilterConfig.FilterID2 = 0x7FF;
 	}
-	if (U8_fifo == FIFO0_CAN2)
+	if (U8_fifo == FIFO0_CAN1)
 	{
 		sFilterConfig.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
 	}
-	else if (U8_fifo == FIFO1_CAN2)
+	else if (U8_fifo == FIFO1_CAN1)
 	{
 		sFilterConfig.FilterConfig = FDCAN_FILTER_TO_RXFIFO1;
 	}
@@ -74,86 +97,56 @@ void CAN_Filter_IDList(uint32_t U32_receiveCANid1, TypeofCANID U8_idType, Filter
     }
 }
 
-/* Transmit a CAN message. */
-// void Transmit_on_CAN(uint32_t U32_transmitCANid, TypeofCANID U8_idType, uint8_t *U8_dataarr, uint8_t U8_DLC)
-// {
-// 	CAN_Message msg;
-// 	if (U8_idType == E)
-// 	{
-// 		msg.TxHeader.IdType = FDCAN_EXTENDED_ID;
-// 	}
-// 	else if (U8_idType == S)
-// 	{
-// 		msg.TxHeader.IdType = FDCAN_STANDARD_ID;
-// 	}
-
-// 	msg.TxHeader.TxFrameType         = FDCAN_DATA_FRAME;
-// 	msg.TxHeader.Identifier          = U32_transmitCANid;
-// 	msg.TxHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
-// 	msg.TxHeader.BitRateSwitch       = FDCAN_BRS_OFF;
-// 	msg.TxHeader.FDFormat            = FDCAN_CLASSIC_CAN;
-// 	msg.TxHeader.TxEventFifoControl  = FDCAN_NO_TX_EVENTS;
-// 	msg.TxHeader.MessageMarker       = 0;
-// 	msg.TxHeader.DataLength 		 = U8_DLC;
-
-// 	memcpy(msg.Data, U8_dataarr, U8_DLC);
-
-// 	if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &msg.TxHeader, msg.Data) != HAL_OK)
-// 	{
-// 		Error_Handler();
-// 	}
-
-// 	// memcpy(msg.Data, U8_dataarr, U8_DLC);
-// 	// enqueue(&TxQueue, &msg);
-// }
-
-void Transmit_on_CAN(uint32_t U32_transmitCANid, TypeofCANID U8_idType, uint8_t *U8_dataarr, uint8_t U8_DLC) 
-{
-	FDCAN_TxHeaderTypeDef	TxMsg;
-    
-	if(U8_idType == E)      TxMsg.IdType = FDCAN_EXTENDED_ID;
-	else if(U8_idType == S) TxMsg.IdType = FDCAN_STANDARD_ID;
-
-	TxMsg.TxFrameType           = FDCAN_DATA_FRAME;
-	TxMsg.Identifier            = U32_transmitCANid;
-    TxMsg.ErrorStateIndicator   = FDCAN_ESI_ACTIVE;
-    TxMsg.BitRateSwitch         = FDCAN_BRS_OFF;
-    TxMsg.FDFormat              = FDCAN_CLASSIC_CAN;
-    TxMsg.TxEventFifoControl    = FDCAN_NO_TX_EVENTS;
-    TxMsg.MessageMarker         = 0;
-	
-	switch(U8_DLC) { 
-		case 0:  TxMsg.DataLength  = FDCAN_DLC_BYTES_0; break;  /*!< 0 bytes data field  */
-		case 1:  TxMsg.DataLength  = FDCAN_DLC_BYTES_1; break;  /*!< 1 bytes data field  */
-		case 2:  TxMsg.DataLength  = FDCAN_DLC_BYTES_2; break;  /*!< 2 bytes data field  */
-		case 3:  TxMsg.DataLength  = FDCAN_DLC_BYTES_3; break;  /*!< 3 bytes data field  */
-		case 4:  TxMsg.DataLength  = FDCAN_DLC_BYTES_4; break;  /*!< 4 bytes data field  */
-		case 5:  TxMsg.DataLength  = FDCAN_DLC_BYTES_5; break;  /*!< 5 bytes data field  */
-		case 6:  TxMsg.DataLength  = FDCAN_DLC_BYTES_6; break;  /*!< 6 bytes data field  */
-		case 7:  TxMsg.DataLength  = FDCAN_DLC_BYTES_7; break;  /*!< 7 bytes data field  */
-		case 8:  TxMsg.DataLength  = FDCAN_DLC_BYTES_8; break;  /*!< 8 bytes data field  */
-		default: TxMsg.DataLength  = FDCAN_DLC_BYTES_0; break;  /*!< 0 bytes data field  */
-	}
-
-    
-	if(HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &TxMsg, U8_dataarr) != HAL_OK) 
-	  __HAL_FDCAN_CLEAR_FLAG(&hfdcan1, FDCAN_TXBC_TFQM);
-
-}
-
-
+/* Transmit the Tx Queue*/
 void Transmit_TxQueue(void)
 {
-    CAN_Message msg;
+	CAN_Message msg;
 
-    if (!isEmpty(&TxQueue))
-    {
-        if (dequeue(&TxQueue, &msg) == 0)
-        {
+	if (!isEmpty(&TxQueue))
+	{
+		if (dequeue(&TxQueue, &msg) == 0)
+		{
 			if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &msg.TxHeader, msg.Data) != HAL_OK)
 			{
 				enqueue(&TxQueue, &msg);
 			}
 		}
-    }
+	}
+}
+
+/* Recieve Queue */
+void Process_RxQueue(void)
+{
+	CAN_Message msg;
+	if (!isEmpty(&RxQueue))
+	{
+		if (dequeue(&RxQueue, &msg) == 0)
+		{
+			// CAN IDs will be processed here.
+			if(msg.RxHeader.Identifier == FDCANID_TEST_ID)
+			{
+				HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
+			}
+			else
+			{
+				// Process other messages
+			}
+		}
+	}
+}
+
+/* Callback function for FDCAN1 FIFO0 */
+void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
+{
+	if (hfdcan == &hfdcan1)
+	{
+		FDCAN_RxHeaderTypeDef RxHeader;
+		CAN_Message msg;
+		uint8_t RxData[8];
+		HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &RxHeader, RxData);
+
+		msg.RxHeader = RxHeader;
+		memcpy(msg.Data, RxData, sizeof(RxData));
+		enqueue(&RxQueue, &msg);
+	}
 }

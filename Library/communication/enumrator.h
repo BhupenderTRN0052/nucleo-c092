@@ -2,6 +2,14 @@
 #define __ENUMERATOR_H
 
 
+/* Fault code*/
+typedef enum {
+	FAULT_BUS_VOLTAGE	 = 1,
+	FAULT_CURRENT_SENSE	 = 2,
+	FAULT_PCB_TEMP		 = 3,
+	FAULT_HEATER_TEMP	 = 4,
+}FAULT_STATUS;
+
 /*CAN Enumerators*/
 typedef enum {
 	E 	= 0,
@@ -9,8 +17,8 @@ typedef enum {
 }TypeofCANID;
 
 typedef enum{
-	FIFO0_CAN1 = 0,
-	FIFO1_CAN1 = 1,
+	FIFO0_CAN1 = 1,
+	FIFO1_CAN1 = 2,
 }FIFOs_CAN1;
 
 typedef enum {
@@ -30,26 +38,5 @@ typedef enum {
 	FBANK13		= 13,
 }FilterBanks_CAN1;
 
-typedef enum{
-	FBANK14		= 14,
-	FBANK15		= 15,
-	FBANK16		= 16,
-	FBANK17		= 17,
-	FBANK18		= 18,
-	FBANK19		= 19,
-	FBANK20		= 20,
-	FBANK21		= 21,
-	FBANK22		= 22,
-	FBANK23		= 23,
-	FBANK24		= 24,
-	FBANK25		= 25,
-	FBANK26		= 26,
-	FBANK27		= 27,
-}FilterBanks_CAN2;
-
-typedef enum{
-	FIFO0_CAN2	= 0,
-	FIFO1_CAN2	= 1,
-}FIFOs_CAN2;
 
 #endif

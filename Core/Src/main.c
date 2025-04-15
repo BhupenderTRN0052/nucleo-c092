@@ -107,10 +107,11 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5); // Toggle the state of the pin
+    // HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
     Transmit_on_CAN(0x001, S, data, 8);
-    // Transmit_TxQueue();
-    HAL_Delay(500); // Delay for 500 milliseconds
+    Transmit_TxQueue();
+    Process_RxQueue();
+    HAL_Delay(500);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
