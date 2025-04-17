@@ -1,25 +1,23 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2025 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2025 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "fdcan.h"
-#include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -27,6 +25,7 @@
 #include "gpio.h"
 #include "can_lib.h"
 #include "queue.h"
+#include "tim.h"
 
 /* USER CODE END Includes */
 
@@ -51,7 +50,13 @@
 Queue TxQueue;
 Queue RxQueue;
 uint8_t data[8] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
+uint8_t swInfo[8] = {SOLAR_CORE_ECU_ID, SOLAR_CORE_SW_VERSION_MAJOR, SOLAR_CORE_SW_VERSION_MINOR, SOLAR_CORE_SW_VERSION_PATCH, 0x00, 0x00, 0x00, 0x00};
+uint8_t hwInfo[8] = {SOLAR_CORE_ECU_ID, SOLAR_CORE_HW_VERSION_MAJOR, SOLAR_CORE_HW_VERSION_MINOR, SOLAR_CORE_HW_VERSION_PATCH, 0x00, 0x00, 0x00, 0x00};
 
+// uint8_t swInfo[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+// uint8_t hwInfo[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
+uint32_t uid[3];
 
 /* USER CODE END PV */
 
@@ -67,9 +72,9 @@ void SystemClock_Config(void);
 /* USER CODE END 0 */
 
 /**
-  * @brief  The application entry point.
-  * @retval int
-  */
+ * @brief  The application entry point.
+ * @retval int
+ */
 int main(void)
 {
 
@@ -96,33 +101,50 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_FDCAN1_Init();
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
   FDCAN_Setup();
   Queue_Init(&TxQueue);
-	Queue_Init(&RxQueue);
+  Queue_Init(&RxQueue);
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+  send_UUID(uid);
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  uint32_t lastTickSW = 0;
+  uint32_t lastTickHW = 0;
+  const uint32_t intervalSW = 500; // 500 ms
+  const uint32_t intervalHW = 500; // 500 ms
+
   while (1)
   {
-    // HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
-    Transmit_on_CAN(0x001, S, data, 8);
-    Transmit_TxQueue();
-    Process_RxQueue();
-    HAL_Delay(500);
-    /* USER CODE END WHILE */
 
-    /* USER CODE BEGIN 3 */
+    uint32_t currentTick = HAL_GetTick();
+
+    if ((currentTick - lastTickSW) >= intervalSW)
+    {
+      lastTickSW = currentTick;
+      Transmit_on_CAN(SOLAR_CORE_TX_SW_VER, S, swInfo, 8);
+    }
+    
+    // Transmit HW version every 510 ms
+    if ((currentTick - lastTickHW) >= intervalHW)
+    {
+      lastTickHW = currentTick;
+      Transmit_on_CAN(SOLAR_CORE_TX_HW_VER, S, hwInfo, 8);
+    }   
+    Transmit_TxQueue();
+    Process_RxQueue(); // Keep processing Rx messages continuously
   }
   /* USER CODE END 3 */
 }
 
 /**
-  * @brief System Clock Configuration
-  * @retval None
-  */
+ * @brief System Clock Configuration
+ * @retval None
+ */
 void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
@@ -131,8 +153,8 @@ void SystemClock_Config(void)
   __HAL_FLASH_SET_LATENCY(FLASH_LATENCY_1);
 
   /** Initializes the RCC Oscillators according to the specified parameters
-  * in the RCC_OscInitTypeDef structure.
-  */
+   * in the RCC_OscInitTypeDef structure.
+   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSIDiv = RCC_HSI_DIV1;
@@ -143,9 +165,8 @@ void SystemClock_Config(void)
   }
 
   /** Initializes the CPU, AHB and APB buses clocks
-  */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1;
+   */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
   RCC_ClkInitStruct.SYSCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_HCLK_DIV1;
@@ -162,9 +183,9 @@ void SystemClock_Config(void)
 /* USER CODE END 4 */
 
 /**
-  * @brief  This function is executed in case of error occurrence.
-  * @retval None
-  */
+ * @brief  This function is executed in case of error occurrence.
+ * @retval None
+ */
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
@@ -176,14 +197,14 @@ void Error_Handler(void)
   /* USER CODE END Error_Handler_Debug */
 }
 
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
-  * @brief  Reports the name of the source file and the source line number
-  *         where the assert_param error has occurred.
-  * @param  file: pointer to the source file name
-  * @param  line: assert_param error line source number
-  * @retval None
-  */
+ * @brief  Reports the name of the source file and the source line number
+ *         where the assert_param error has occurred.
+ * @param  file: pointer to the source file name
+ * @param  line: assert_param error line source number
+ * @retval None
+ */
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
