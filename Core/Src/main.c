@@ -18,15 +18,16 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "adc.h"
+#include "dma.h"
+#include "fdcan.h"
+#include "tim.h"
+#include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "fdcan.h"
-#include "gpio.h"
 #include "can_lib.h"
 #include "queue.h"
-#include "tim.h"
-
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -41,6 +42,7 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
+#define ADC_CHANNEL_COUNT 4
 
 /* USER CODE END PM */
 
@@ -52,6 +54,7 @@ Queue RxQueue;
 uint8_t data[8] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
 uint8_t swInfo[8] = {SOLAR_CORE_ECU_ID, SOLAR_CORE_SW_VERSION_MAJOR, SOLAR_CORE_SW_VERSION_MINOR, SOLAR_CORE_SW_VERSION_PATCH, 0x00, 0x00, 0x00, 0x00};
 uint8_t hwInfo[8] = {SOLAR_CORE_ECU_ID, SOLAR_CORE_HW_VERSION_MAJOR, SOLAR_CORE_HW_VERSION_MINOR, SOLAR_CORE_HW_VERSION_PATCH, 0x00, 0x00, 0x00, 0x00};
+uint16_t adc_buffer[ADC_CHANNEL_COUNT]; 
 
 // uint8_t swInfo[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 // uint8_t hwInfo[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
@@ -100,8 +103,10 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_FDCAN1_Init();
   MX_TIM1_Init();
+  MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   FDCAN_Setup();
   Queue_Init(&TxQueue);
@@ -111,12 +116,17 @@ int main(void)
 
   /* USER CODE END 2 */
 
+  /* USER CODE BEGIN 3 */
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   uint32_t lastTickSW = 0;
   uint32_t lastTickHW = 0;
   const uint32_t intervalSW = 500; // 500 ms
   const uint32_t intervalHW = 500; // 500 ms
+
+  
+  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_buffer, ADC_CHANNEL_COUNT);
+
 
   while (1)
   {
@@ -128,13 +138,13 @@ int main(void)
       lastTickSW = currentTick;
       Transmit_on_CAN(SOLAR_CORE_TX_SW_VER, S, swInfo, 8);
     }
-    
+
     // Transmit HW version every 510 ms
     if ((currentTick - lastTickHW) >= intervalHW)
     {
       lastTickHW = currentTick;
       Transmit_on_CAN(SOLAR_CORE_TX_HW_VER, S, hwInfo, 8);
-    }   
+    }
     Transmit_TxQueue();
     Process_RxQueue(); // Keep processing Rx messages continuously
   }
